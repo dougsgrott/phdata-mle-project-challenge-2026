@@ -1,4 +1,4 @@
-.PHONY: test-build test-unit test-integration test-all clean help
+.PHONY: test-build test-unit test-integration test-all clean help lint fix ci
 
 # Build the test Docker image
 test-build:
@@ -45,3 +45,19 @@ help:
 	@echo "  make test-integration       # Full integration tests"
 	@echo "  make test-all               # Complete test suite"
 	@echo "  make clean                  # Clean up after tests"
+	@echo "  lint              - Run Ruff lint and format checks"
+	@echo "  fix               - Auto-fix lint issues and reformat code"
+	@echo "  ci                - Run lint, then all tests"
+
+# Lint and format check (no changes made)
+lint:
+	uv run ruff check .
+	uv run ruff format --check .
+
+# Auto-fix lint issues and reformat
+fix:
+	uv run ruff check --fix .
+	uv run ruff format .
+
+# What CI runs: lint first, then the full Docker test suite
+ci: lint test-all
