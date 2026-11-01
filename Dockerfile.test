@@ -1,17 +1,16 @@
 FROM python:3.10-slim
 
+COPY --from=ghcr.io/astral-sh/uv:0.12.21 /uv /bin/uv
+ENV UV_PYTHON_DOWNLOADS=never
+
 WORKDIR /app
 
 # Set PYTHONPATH to allow imports from src and within src
-ENV PYTHONPATH=/app:/app/src
+ENV PYTHONPATH=/app:/app/src PATH="/app/.venv/bin:$PATH"
 
-# Copy and install production dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy and install test dependencies
-COPY requirements-test.txt .
-RUN pip install --no-cache-dir -r requirements-test.txt
+# Copy and install dependencies
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-install-project
 
 # Copy application code
 COPY src ./src

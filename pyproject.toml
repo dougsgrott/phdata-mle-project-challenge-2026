@@ -11,11 +11,11 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "pandas",
-    "scikit-learn",
+    "scikit-learn==1.7.2",
     "pydantic",
     "numpy",
 ]
-
+# scikit-learn must match the version that created src/model/model.pkl
 
 
 [tool.ruff]
