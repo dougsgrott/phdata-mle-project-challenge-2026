@@ -1,0 +1,35 @@
+[project]
+name = "phdata-mle-project-challenge-2026"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Douglas Sgrott", email = "doug.sgrott@gmail.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pandas",
+    "scikit-learn==1.7.2",
+    "pydantic",
+    "numpy",
+]
+# scikit-learn must match the version that created src/model/model.pkl
+
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]  # pycodestyle, pyflakes, isort, pyupgrade, bugbear
+
+[dependency-groups]
+dev = [
+    "httpx>=0.24.0",
+    "hypothesis>=6.82.0",
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "ruff",
+]
+

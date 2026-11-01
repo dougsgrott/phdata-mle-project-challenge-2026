@@ -45,3 +45,7 @@ Thumbs.db
 build/
 dist/
 *.egg-info/
+
+ignore/
+.ruff_cache/
+repo_concat.txt
