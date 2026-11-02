@@ -26,7 +26,8 @@ def load_artifacts():
     with open("model/model_features.json") as features_file:
         model_features = json.load(features_file)
     demographics = pd.read_csv("data/zipcode_demographics.csv", dtype={"zipcode": str})
-    return model, model_features, demographics
+    demographics_by_zip = demographics.set_index("zipcode").to_dict(orient="index")
+    return model, model_features, demographics_by_zip
 
 
 @router.get("/health")
@@ -41,22 +42,10 @@ async def health_check():
 @router.post("/predict")
 async def predict(home_features: HomeFeatures, request: Request):
     state = request.app.state
-    input_data = pd.DataFrame([home_features.dict()])
 
-    # Load demographic data
-    demographics = state.demographics
-    demographic_info = (
-        demographics[demographics["zipcode"] == home_features.zipcode]
-        .drop(columns="zipcode")
-        .reset_index(drop=True)
-    )
-
-    # Combine input data with demographic data
-    input_data = pd.concat([input_data, demographic_info], axis=1)
-    # print(input_data) # Removed for performance
-
-    # Ensure the input data has the correct features
-    input_data = input_data[state.model_features]
+    # One row: house fields + the zipcode's demographics, in the model's order
+    row = {**home_features.dict(), **state.demographics_by_zip[home_features.zipcode]}
+    input_data = pd.DataFrame([row], columns=state.model_features)
 
     # Make prediction
     prediction = state.model.predict(input_data)

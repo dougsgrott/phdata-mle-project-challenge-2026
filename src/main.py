@@ -9,7 +9,9 @@ from api.endpoints import router as api_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.model, app.state.model_features, app.state.demographics = load_artifacts()
+    app.state.model, app.state.model_features, app.state.demographics_by_zip = (
+        load_artifacts()
+    )
     yield
 
 
