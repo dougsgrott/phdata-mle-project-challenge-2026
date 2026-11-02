@@ -20,9 +20,13 @@ dependencies = [
 
 [tool.ruff]
 line-length = 88
+extend-exclude = ["*.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]  # pycodestyle, pyflakes, isort, pyupgrade, bugbear
+
+[tool.ruff.lint.per-file-ignores]
+"*.ipynb" = ["E501"]
 
 [dependency-groups]
 dev = [

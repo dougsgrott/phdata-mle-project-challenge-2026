@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 import json
 import pickle
+
 import pandas as pd
+from fastapi import APIRouter
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -35,14 +36,16 @@ async def predict(home_features: HomeFeatures):
 
     with open("model/model_features.json") as features_file:
         model_features = json.load(features_file)
-        
+
     input_data = pd.DataFrame([home_features.dict()])
 
     # Load demographic data
     demographics = pd.read_csv("data/zipcode_demographics.csv", dtype={"zipcode": str})
-    demographic_info = demographics[
-        demographics["zipcode"] == home_features.zipcode
-    ].drop(columns="zipcode").reset_index(drop=True)
+    demographic_info = (
+        demographics[demographics["zipcode"] == home_features.zipcode]
+        .drop(columns="zipcode")
+        .reset_index(drop=True)
+    )
 
     # Combine input data with demographic data
     input_data = pd.concat([input_data, demographic_info], axis=1)
