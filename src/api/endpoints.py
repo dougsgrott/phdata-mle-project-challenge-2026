@@ -1,9 +1,10 @@
 import json
 import pickle
+from typing import Annotated, Any
 
 import pandas as pd
-from fastapi import APIRouter
-from pydantic import BaseModel
+from fastapi import APIRouter, Body, Request
+from pydantic import BaseModel, ValidationError
 
 router = APIRouter()
 
@@ -19,6 +20,17 @@ class HomeFeatures(BaseModel):
     zipcode: str
 
 
+def load_artifacts():
+    """Read the model, its feature order and the demographics table (once)."""
+    with open("model/model.pkl", "rb") as model_file:
+        model = pickle.load(model_file)
+    with open("model/model_features.json") as features_file:
+        model_features = json.load(features_file)
+    demographics = pd.read_csv("data/zipcode_demographics.csv", dtype={"zipcode": str})
+    demographics_by_zip = demographics.set_index("zipcode").to_dict(orient="index")
+    return model, model_features, demographics_by_zip
+
+
 @router.get("/health")
 async def health_check():
     """
@@ -29,32 +41,55 @@ async def health_check():
 
 
 @router.post("/predict")
-async def predict(home_features: HomeFeatures):
-    # Load the model and features
-    with open("model/model.pkl", "rb") as model_file:
-        model = pickle.load(model_file)
+async def predict(home_features: HomeFeatures, request: Request):
+    state = request.app.state
 
-    with open("model/model_features.json") as features_file:
-        model_features = json.load(features_file)
-
-    input_data = pd.DataFrame([home_features.dict()])
-
-    # Load demographic data
-    demographics = pd.read_csv("data/zipcode_demographics.csv", dtype={"zipcode": str})
-    demographic_info = (
-        demographics[demographics["zipcode"] == home_features.zipcode]
-        .drop(columns="zipcode")
-        .reset_index(drop=True)
-    )
-
-    # Combine input data with demographic data
-    input_data = pd.concat([input_data, demographic_info], axis=1)
-    print(input_data)
-
-    # Ensure the input data has the correct features
-    input_data = input_data[model_features]
+    # One row: house fields + the zipcode's demographics, in the model's order
+    row = {**home_features.dict(), **state.demographics_by_zip[home_features.zipcode]}
+    input_data = pd.DataFrame([row], columns=state.model_features)
 
     # Make prediction
-    prediction = model.predict(input_data)
+    prediction = state.model.predict(input_data)
 
     return {"predicted_price": prediction[0]}
+
+
+def predict_rows(state, rows: list[HomeFeatures]) -> list[float]:
+    """Price validated rows with one model call. Their zipcodes must be known."""
+    data = [{**row.dict(), **state.demographics_by_zip[row.zipcode]} for row in rows]
+    input_data = pd.DataFrame(data, columns=state.model_features)
+    return [float(price) for price in state.model.predict(input_data)]
+
+
+def describe(exc: ValidationError) -> str:
+    """One readable line per validation problem, e.g. 'bedrooms: Input should be...'."""
+    return "; ".join(
+        f"{'.'.join(map(str, err['loc']))}: {err['msg']}" if err["loc"] else err["msg"]
+        for err in exc.errors()
+    )
+
+
+@router.post("/predict/batch")
+async def predict_batch(request: Request, rows: Annotated[list[Any], Body()]):
+    """Price a list of houses. Bad rows get an error; the others still get a price."""
+    state = request.app.state
+    results: list[dict] = [{} for _ in rows]
+    valid, positions = [], []
+
+    for i, raw in enumerate(rows):
+        try:
+            row = HomeFeatures.model_validate(raw)
+        except ValidationError as exc:
+            results[i] = {"error": describe(exc)}
+            continue
+        if row.zipcode not in state.demographics_by_zip:
+            results[i] = {"error": f"zipcode: unknown zipcode {row.zipcode}"}
+            continue
+        valid.append(row)
+        positions.append(i)
+
+    if valid:
+        for i, price in zip(positions, predict_rows(state, valid), strict=True):
+            results[i] = {"predicted_price": price}
+
+    return results

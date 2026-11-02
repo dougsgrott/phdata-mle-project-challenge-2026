@@ -1,5 +1,6 @@
 """Profile a single /predict request (baseline measurement, no app changes)."""
 
+import argparse
 import asyncio
 import os
 import sys
@@ -10,7 +11,6 @@ from pyinstrument import Profiler
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
-OUT = ROOT / "reports" / "profile" / "baseline.txt"
 
 # The endpoint uses relative paths ("model/...", "data/..."), so run from src/
 sys.path.insert(0, str(SRC))
@@ -36,21 +36,25 @@ async def call(client: httpx.AsyncClient) -> dict:
     return response.json()
 
 
-async def main() -> None:
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
-        await call(c)  # warm-up: lazy imports, OS file cache (not profiled)
-
-        profiler = Profiler(interval=0.0001)
-        profiler.start()
-        result = await call(c)
-        profiler.stop()
-
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    header = f"# /predict profile (1 warm request)\n# result: {result}\n\n"
-    OUT.write_text(header + profiler.output_text(unicode=False, color=False))
-    print(f"Wrote {OUT}")
+async def main(label: str) -> None:
+    out = ROOT / "reports" / "profile" / f"{label}.txt"
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+            await call(c)  # warm-up
+            profiler = Profiler(interval=0.0001)
+            profiler.start()
+            result = await call(c)
+            profiler.stop()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        f"# /predict profile (1 warm request)\n# result: {result}\n\n"
+        + profiler.output_text(unicode=False, color=False)
+    )
+    print(f"Wrote {out}")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--label", required=True)
+    asyncio.run(main(p.parse_args().label))
