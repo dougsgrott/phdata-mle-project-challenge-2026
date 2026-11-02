@@ -1,3 +1,8 @@
+import pickle
+
+from fastapi.testclient import TestClient
+
+
 def test_health_endpoint(test_client):
     """Test the /health endpoint returns correct status."""
     response = test_client.get("/health")
@@ -14,3 +19,19 @@ def test_predict_endpoint_valid_input(test_client, sample_home_features):
     response_data = response.json()
     assert "predicted_price" in response_data
     assert isinstance(response_data["predicted_price"], float)
+
+
+def test_artifacts_load_once(monkeypatch, sample_home_features):
+    """N requests must not reload the model: it is read once, at startup."""
+    from src.main import app
+
+    calls = []
+    real_load = pickle.load
+    monkeypatch.setattr(pickle, "load", lambda f: calls.append(1) or real_load(f))
+
+    with TestClient(app) as client:
+        for _ in range(5):
+            response = client.post("/predict", json=sample_home_features)
+            assert response.status_code == 200
+
+    assert len(calls) == 1

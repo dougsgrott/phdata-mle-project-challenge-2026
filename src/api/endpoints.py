@@ -19,6 +19,16 @@ class HomeFeatures(BaseModel):
     zipcode: str
 
 
+def load_artifacts():
+    """Read the model, its feature order and the demographics table (once)."""
+    with open("model/model.pkl", "rb") as model_file:
+        model = pickle.load(model_file)
+    with open("model/model_features.json") as features_file:
+        model_features = json.load(features_file)
+    demographics = pd.read_csv("data/zipcode_demographics.csv", dtype={"zipcode": str})
+    return model, model_features, demographics
+
+
 @router.get("/health")
 async def health_check():
     """
@@ -29,18 +39,12 @@ async def health_check():
 
 
 @router.post("/predict")
-async def predict(home_features: HomeFeatures):
-    # Load the model and features
-    with open("model/model.pkl", "rb") as model_file:
-        model = pickle.load(model_file)
-
-    with open("model/model_features.json") as features_file:
-        model_features = json.load(features_file)
-
+async def predict(home_features: HomeFeatures, request: Request):
+    state = request.app.state
     input_data = pd.DataFrame([home_features.dict()])
 
     # Load demographic data
-    demographics = pd.read_csv("data/zipcode_demographics.csv", dtype={"zipcode": str})
+    demographics = state.demographics
     demographic_info = (
         demographics[demographics["zipcode"] == home_features.zipcode]
         .drop(columns="zipcode")
@@ -52,9 +56,9 @@ async def predict(home_features: HomeFeatures):
     # print(input_data) # Removed for performance
 
     # Ensure the input data has the correct features
-    input_data = input_data[model_features]
+    input_data = input_data[state.model_features]
 
     # Make prediction
-    prediction = model.predict(input_data)
+    prediction = state.model.predict(input_data)
 
     return {"predicted_price": prediction[0]}
