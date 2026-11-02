@@ -36,8 +36,8 @@ CONCURRENCY_LEVELS = (1, 10)
 def docker(*args: str, check: bool = True) -> subprocess.CompletedProcess:
     proc = subprocess.run(["docker", *args], capture_output=True, text=True)
     if check and proc.returncode != 0:
-        sys.exit(f"docker {' '.join(args)} failed ({proc.returncode}):\n{proc.stderr.strip()}")
-    return proc
+        cmd = " ".join(args)
+        sys.exit(f"docker {cmd} failed ({proc.returncode}):\n{proc.stderr.strip()}")
 
 
 def remove_container() -> None:
@@ -137,9 +137,7 @@ def main() -> int:
         for i in range(args.cold_starts):
             health_s = start_and_wait(args)
             first_ms = timed_first_request(url, payload)
-            cold_runs.append(
-                {"health_seconds": health_s, "first_request_ms": first_ms}
-            )
+            cold_runs.append({"health_seconds": health_s, "first_request_ms": first_ms})
             print(
                 f"cold start {i + 1}/{args.cold_starts}: "
                 f"health {health_s:.2f}s, first request {first_ms:.0f} ms"

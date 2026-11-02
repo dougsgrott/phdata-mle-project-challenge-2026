@@ -85,6 +85,7 @@ def latency_stats(results: list[dict]) -> dict | None:
         "max": float(ms.max()),
     }
 
+
 def summarize(results: list[dict], wall: float, args: argparse.Namespace) -> dict:
     ok = [r for r in results if r["error"] is None]
     errors = Counter(r["error"] for r in results if r["error"] is not None)

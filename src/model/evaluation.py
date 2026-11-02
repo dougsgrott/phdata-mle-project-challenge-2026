@@ -11,8 +11,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from create_model import SALES_COLUMN_SELECTION
 from sklearn.model_selection import train_test_split
+
+from create_model import SALES_COLUMN_SELECTION
 
 MODEL_DIR = Path(__file__).resolve().parent
 DATA = MODEL_DIR.parent / "data"

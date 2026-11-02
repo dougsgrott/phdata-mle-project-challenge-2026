@@ -20,9 +20,7 @@ def build_features(rows: pd.DataFrame, features: list[str]) -> pd.DataFrame:
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--model", type=Path, default=MODEL_DIR / "model.pkl")
-    p.add_argument(
-        "--features", type=Path, default=MODEL_DIR / "model_features.json"
-    )
+    p.add_argument("--features", type=Path, default=MODEL_DIR / "model_features.json")
     p.add_argument("--label", required=True, help="report name, e.g. baseline")
     p.add_argument("--out", type=Path, help="write per-row predictions CSV here")
     args = p.parse_args()
