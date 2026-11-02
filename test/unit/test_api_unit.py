@@ -1,6 +1,7 @@
 import json
 import logging
 import pickle
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -84,3 +85,11 @@ def test_request_is_logged_as_json(test_client, sample_home_features, caplog):
     assert entry["status"] == 200
     assert entry["zipcode"] == sample_home_features["zipcode"]
     assert entry["latency_ms"] >= 0
+
+
+def test_house_fields_match_model_features():
+    """The schema's house fields are the model's first features, in the same order."""
+    from src.api.endpoints import HOUSE_FIELDS
+
+    features = json.loads(Path("model/model_features.json").read_text())
+    assert features[: len(HOUSE_FIELDS)] == HOUSE_FIELDS

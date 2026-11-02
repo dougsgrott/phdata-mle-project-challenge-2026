@@ -2,6 +2,7 @@
 
 Shared by evaluate_model.py (a model file, in-process) and
 scripts/evaluate_api.py (a running API), so both score the same rows the same way.
+create_imputer.py takes the training rows from the same split.
 """
 
 import json
@@ -21,8 +22,8 @@ ROOT = MODEL_DIR.parent.parent
 RANDOM_STATE = 42  # same as the split in create_model.py
 
 
-def load_holdout() -> pd.DataFrame:
-    """The 25% of kc_house_data.csv that create_model.py does not train on."""
+def load_split() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """create_model.py's split of kc_house_data.csv: (training rows, 25% holdout)."""
     sales = pd.read_csv(
         DATA / "kc_house_data.csv",
         usecols=SALES_COLUMN_SELECTION,
@@ -36,8 +37,13 @@ def load_holdout() -> pd.DataFrame:
     merged_rows = len(sales.merge(demographics[["zipcode"]], how="left", on="zipcode"))
     if merged_rows != len(sales):
         sys.exit(f"merge changes the row count ({len(sales)} -> {merged_rows})")
-    _, holdout = train_test_split(sales, random_state=RANDOM_STATE)
-    return holdout.reset_index(drop=True)
+    train, holdout = train_test_split(sales, random_state=RANDOM_STATE)
+    return train.reset_index(drop=True), holdout.reset_index(drop=True)
+
+
+def load_holdout() -> pd.DataFrame:
+    """The 25% of kc_house_data.csv that create_model.py does not train on."""
+    return load_split()[1]
 
 
 def score(true, pred) -> dict:

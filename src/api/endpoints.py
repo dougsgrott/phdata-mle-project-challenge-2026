@@ -21,6 +21,10 @@ class HomeFeatures(BaseModel):
     zipcode: str
 
 
+# The house fields, in the model's order (a unit test checks model_features.json)
+HOUSE_FIELDS = [name for name in HomeFeatures.model_fields if name != "zipcode"]
+
+
 def load_artifacts():
     """Read the model, its feature order and the demographics table (once)."""
     with open("model/model.pkl", "rb") as model_file:
