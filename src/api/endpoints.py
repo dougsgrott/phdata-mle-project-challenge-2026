@@ -11,13 +11,14 @@ router = APIRouter()
 
 
 class HomeFeatures(BaseModel):
-    bedrooms: int
-    bathrooms: float
-    sqft_living: float
-    sqft_lot: float
-    floors: float
-    sqft_above: float
-    sqft_basement: float
+    # Any house field may be null or left out; the imputer fills it. zipcode can't.
+    bedrooms: int | None = None
+    bathrooms: float | None = None
+    sqft_living: float | None = None
+    sqft_lot: float | None = None
+    floors: float | None = None
+    sqft_above: float | None = None
+    sqft_basement: float | None = None
     zipcode: str
 
 
