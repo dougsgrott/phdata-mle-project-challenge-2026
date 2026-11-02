@@ -36,7 +36,9 @@ CONCURRENCY_LEVELS = (1, 10)
 def docker(*args: str, check: bool = True) -> subprocess.CompletedProcess:
     proc = subprocess.run(["docker", *args], capture_output=True, text=True)
     if check and proc.returncode != 0:
-        sys.exit(f"docker {' '.join(args)} failed ({proc.returncode}):\n{proc.stderr.strip()}")
+        cmd_str = " ".join(args)
+        err_msg = proc.stderr.strip()
+        sys.exit(f"docker {cmd_str} failed ({proc.returncode}):\n{err_msg}")
     return proc
 
 
