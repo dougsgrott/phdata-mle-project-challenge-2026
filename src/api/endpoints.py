@@ -50,6 +50,7 @@ def unknown_zipcode(zipcode: str) -> str:
 async def predict(home_features: HomeFeatures, request: Request):
     state = request.app.state
     zipcode = home_features.zipcode
+    request.state.zipcode = zipcode
 
     # Only zipcodes with demographics can be priced (D9: 422, not 500)
     if zipcode not in state.demographics_by_zip:
@@ -88,6 +89,7 @@ def describe(exc: ValidationError) -> str:
 async def predict_batch(request: Request, rows: Annotated[list[Any], Body()]):
     """Price a list of houses. Bad rows get an error; the others still get a price."""
     state = request.app.state
+    request.state.rows = len(rows)
     results: list[dict] = [{} for _ in rows]
     valid, positions = [], []
 
