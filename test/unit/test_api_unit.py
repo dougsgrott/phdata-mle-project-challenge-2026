@@ -35,3 +35,24 @@ def test_artifacts_load_once(monkeypatch, sample_home_features):
             assert response.status_code == 200
 
     assert len(calls) == 1
+
+
+def test_batch_reports_bad_rows(test_client, sample_home_features):
+    """One bad row gets an error; the other rows still get prices, in order."""
+    bad_value = {**sample_home_features, "bedrooms": "three"}
+    unknown_zip = {**sample_home_features, "zipcode": "00000"}
+    body = [sample_home_features, bad_value, unknown_zip, 42]
+
+    response = test_client.post("/predict/batch", json=body)
+
+    assert response.status_code == 200
+    good, bad, unknown, not_object = response.json()
+    assert good["predicted_price"] > 0
+    assert "bedrooms" in bad["error"]
+    assert "zipcode" in unknown["error"]
+    assert "error" in not_object
+
+
+def test_batch_rejects_non_list(test_client, sample_home_features):
+    response = test_client.post("/predict/batch", json=sample_home_features)
+    assert response.status_code == 422
