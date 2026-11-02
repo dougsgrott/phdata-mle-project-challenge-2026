@@ -30,14 +30,16 @@ def test_artifacts_load_once(monkeypatch, sample_home_features):
 
     calls = []
     real_load = pickle.load
-    monkeypatch.setattr(pickle, "load", lambda f: calls.append(1) or real_load(f))
+    monkeypatch.setattr(
+        pickle, "load", lambda f: calls.append(Path(f.name).name) or real_load(f)
+    )
 
     with TestClient(app) as client:
         for _ in range(5):
             response = client.post("/predict", json=sample_home_features)
             assert response.status_code == 200
 
-    assert len(calls) == 1
+    assert sorted(calls) == ["imputer.pkl", "model.pkl"]
 
 
 def test_batch_reports_bad_rows(test_client, sample_home_features):

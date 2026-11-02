@@ -31,9 +31,11 @@ def load_artifacts():
         model = pickle.load(model_file)
     with open("model/model_features.json") as features_file:
         model_features = json.load(features_file)
+    with open("model/imputer.pkl", "rb") as imputer_file:
+        imputer = pickle.load(imputer_file)
     demographics = pd.read_csv("data/zipcode_demographics.csv", dtype={"zipcode": str})
     demographics_by_zip = demographics.set_index("zipcode").to_dict(orient="index")
-    return model, model_features, demographics_by_zip
+    return model, model_features, demographics_by_zip, imputer
 
 
 @router.get("/health")
