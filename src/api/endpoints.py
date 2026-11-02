@@ -77,9 +77,21 @@ async def predict(home_features: HomeFeatures, request: Request):
 
 
 def predict_rows(state, rows: list[HomeFeatures]) -> list[float]:
-    """Price validated rows with one model call. Their zipcodes must be known."""
+    """Price validated rows with one model call. Their zipcodes must be known.
+
+    Join the demographics, fill missing house fields with the imputer, then
+    predict with the columns in the model's order. Complete rows skip the imputer.
+    """
     data = [{**row.dict(), **state.demographics_by_zip[row.zipcode]} for row in rows]
-    input_data = pd.DataFrame(data, columns=state.model_features)
+    frame = pd.DataFrame(data)
+
+    gaps = frame[HOUSE_FIELDS].isna().any(axis=1)
+    if gaps.any():
+        house = frame[HOUSE_FIELDS].astype(float)
+        house.loc[gaps] = state.imputer.transform(house.loc[gaps])
+        frame[HOUSE_FIELDS] = house
+
+    input_data = frame[state.model_features]
     return [float(price) for price in state.model.predict(input_data)]
 
 
