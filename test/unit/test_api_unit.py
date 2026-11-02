@@ -1,3 +1,5 @@
+import json
+import logging
 import pickle
 
 from fastapi.testclient import TestClient
@@ -56,3 +58,29 @@ def test_batch_reports_bad_rows(test_client, sample_home_features):
 def test_batch_rejects_non_list(test_client, sample_home_features):
     response = test_client.post("/predict/batch", json=sample_home_features)
     assert response.status_code == 422
+
+
+def test_predict_unknown_zipcode(test_client, sample_home_features):
+    """A zipcode without demographics is a client error, not a server error."""
+    body = {**sample_home_features, "zipcode": "00000"}
+
+    response = test_client.post("/predict", json=body)
+
+    assert response.status_code == 422
+    error = response.json()["detail"][0]
+    assert error["loc"] == ["body", "zipcode"]
+    assert "00000" in error["msg"]
+
+
+def test_request_is_logged_as_json(test_client, sample_home_features, caplog):
+    """Each request produces one JSON log line with path, status and zipcode."""
+    caplog.set_level(logging.INFO, logger="housing_api")
+
+    test_client.post("/predict", json=sample_home_features)
+
+    lines = [r.getMessage() for r in caplog.records if r.name == "housing_api"]
+    entry = json.loads(lines[-1])
+    assert entry["path"] == "/predict"
+    assert entry["status"] == 200
+    assert entry["zipcode"] == sample_home_features["zipcode"]
+    assert entry["latency_ms"] >= 0

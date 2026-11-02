@@ -3,6 +3,9 @@ FROM python:3.10-slim
 COPY --from=ghcr.io/astral-sh/uv:0.12.21 /uv /bin/uv
 ENV UV_PYTHON_DOWNLOADS=never PATH="/app/.venv/bin:$PATH"
 
+# Uncomment to get identical results between P2 and Baseline
+ENV OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+
 WORKDIR /app
 
 # Install curl for health checks
@@ -14,4 +17,4 @@ RUN uv sync --locked --no-dev --no-install-project
 
 COPY src .
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

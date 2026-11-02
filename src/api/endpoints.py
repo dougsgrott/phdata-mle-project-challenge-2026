@@ -4,6 +4,7 @@ from typing import Annotated, Any
 
 import pandas as pd
 from fastapi import APIRouter, Body, Request
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, ValidationError
 
 router = APIRouter()
@@ -40,18 +41,33 @@ async def health_check():
     return {"status": "healthy"}
 
 
+def unknown_zipcode(zipcode: str) -> str:
+    """Same wording for /predict and /predict/batch."""
+    return f"zipcode {zipcode} is not in the demographics data"
+
+
 @router.post("/predict")
 async def predict(home_features: HomeFeatures, request: Request):
     state = request.app.state
+    zipcode = home_features.zipcode
+    request.state.zipcode = zipcode
+
+    # Only zipcodes with demographics can be priced (D9: 422, not 500)
+    if zipcode not in state.demographics_by_zip:
+        raise RequestValidationError(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("body", "zipcode"),
+                    "msg": unknown_zipcode(zipcode),
+                    "input": zipcode,
+                }
+            ]
+        )
 
     # One row: house fields + the zipcode's demographics, in the model's order
-    row = {**home_features.dict(), **state.demographics_by_zip[home_features.zipcode]}
-    input_data = pd.DataFrame([row], columns=state.model_features)
-
-    # Make prediction
-    prediction = state.model.predict(input_data)
-
-    return {"predicted_price": prediction[0]}
+    prediction = predict_rows(state, [home_features])[0]
+    return {"predicted_price": prediction}
 
 
 def predict_rows(state, rows: list[HomeFeatures]) -> list[float]:
@@ -73,6 +89,7 @@ def describe(exc: ValidationError) -> str:
 async def predict_batch(request: Request, rows: Annotated[list[Any], Body()]):
     """Price a list of houses. Bad rows get an error; the others still get a price."""
     state = request.app.state
+    request.state.rows = len(rows)
     results: list[dict] = [{} for _ in rows]
     valid, positions = [], []
 
@@ -83,7 +100,7 @@ async def predict_batch(request: Request, rows: Annotated[list[Any], Body()]):
             results[i] = {"error": describe(exc)}
             continue
         if row.zipcode not in state.demographics_by_zip:
-            results[i] = {"error": f"zipcode: unknown zipcode {row.zipcode}"}
+            results[i] = {"error": f"zipcode: {unknown_zipcode(row.zipcode)}"}
             continue
         valid.append(row)
         positions.append(i)

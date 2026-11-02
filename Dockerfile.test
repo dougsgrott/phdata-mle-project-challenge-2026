@@ -3,6 +3,9 @@ FROM python:3.10-slim
 COPY --from=ghcr.io/astral-sh/uv:0.12.21 /uv /bin/uv
 ENV UV_PYTHON_DOWNLOADS=never
 
+# Uncomment to get identical results between P2 and Baseline
+ENV OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+
 WORKDIR /app
 
 # Set PYTHONPATH to allow imports from src and within src
