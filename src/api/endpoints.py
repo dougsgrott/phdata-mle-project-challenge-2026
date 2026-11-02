@@ -2,7 +2,7 @@ import json
 import pickle
 
 import pandas as pd
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -49,7 +49,7 @@ async def predict(home_features: HomeFeatures):
 
     # Combine input data with demographic data
     input_data = pd.concat([input_data, demographic_info], axis=1)
-    print(input_data)
+    # print(input_data) # Removed for performance
 
     # Ensure the input data has the correct features
     input_data = input_data[model_features]
