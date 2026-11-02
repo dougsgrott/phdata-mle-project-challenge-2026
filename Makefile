@@ -66,3 +66,8 @@ ci: lint test-all
 train-model:
 	docker build -f src/model/Dockerfile -t ml-api-model .
 	docker run --rm -v $(PWD)/src/model:/app/model ml-api-model
+
+benchmark:
+	@test -n "$(IMAGE)" -a -n "$(LABEL)" || \
+		{ echo "usage: make benchmark IMAGE=housing-api:baseline LABEL=baseline"; exit 1; }
+	uv run python scripts/benchmark_container.py --image $(IMAGE) --label $(LABEL)
