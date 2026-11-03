@@ -27,3 +27,21 @@ jobs:
 
       - name: Integration tests
         run: make test-integration
+
+  # Static checks only: no AWS credentials, no state, nothing is applied
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.13"
+      - name: Format
+        run: terraform fmt -check -recursive
+      - name: Init (providers only, no backend)
+        run: terraform init -backend=false -input=false
+      - name: Validate
+        run: terraform validate

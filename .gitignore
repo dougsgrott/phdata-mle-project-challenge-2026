@@ -208,6 +208,12 @@ cython_debug/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
 # Ruff stuff:
 .ruff_cache/
 
