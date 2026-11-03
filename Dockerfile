@@ -12,6 +12,10 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl && \
     rm -rf /var/lib/apt/lists/*
 
+# Lambda Web Adapter: forwards Lambda events to uvicorn; inert outside Lambda
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.0.0 /lambda-adapter /opt/extensions/lambda-adapter
+ENV AWS_LWA_PORT=8000 AWS_LWA_READINESS_CHECK_PATH=/health
+
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 
