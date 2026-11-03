@@ -16,6 +16,6 @@ variable "alert_email" {
 }
 
 variable "github_repository" {
-  description = "GitHub repository allowed to deploy, as owner/name"
+  description = "Repository allowed to deploy, as GitHub writes it in the OIDC subject: owner@ownerId/name@repoId"
   type        = string
 }

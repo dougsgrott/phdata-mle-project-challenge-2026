@@ -1,2 +1,2 @@
 alert_email       = "doug.sgrott@gmail.com"
-github_repository = "https://github.com/dougsgrott/phdata-mle-project-challenge-2026"
+github_repository = "dougsgrott@26178192/phdata-mle-project-challenge-2026@1437152473"
