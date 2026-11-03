@@ -9,3 +9,8 @@ variable "region" {
   type        = string
   default     = "us-west-2"
 }
+
+variable "alert_email" {
+  description = "Where alarm and budget emails go"
+  type        = string
+}
