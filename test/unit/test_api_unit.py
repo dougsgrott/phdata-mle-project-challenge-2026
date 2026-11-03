@@ -137,13 +137,25 @@ def test_null_zipcode_rejected(test_client, sample_home_features):
 
 
 def test_batch_price_does_not_depend_on_batchmates(test_client, sample_home_features):
-    """A house with gaps gets the same price alone and in two different batches."""
+    """A house with gaps gets the same result alone and in two different batches."""
     house = {**sample_home_features, "bathrooms": None, "sqft_lot": None}
     other = {**sample_home_features, "zipcode": "98125", "sqft_living": None}
 
-    alone = test_client.post("/predict", json=house).json()["predicted_price"]
+    alone = test_client.post("/predict", json=house).json()
     first = test_client.post("/predict/batch", json=[house, sample_home_features])
     second = test_client.post("/predict/batch", json=[other, house, other])
 
-    assert first.json()[0]["predicted_price"] == alone
-    assert second.json()[1]["predicted_price"] == alone
+    assert first.json()[0] == alone
+    assert second.json()[1] == alone
+
+
+def test_imputed_fields_lists_only_filled_fields(test_client, sample_home_features):
+    """Filled fields come back with their values; complete rows get an empty dict."""
+    body = {**sample_home_features, "bathrooms": None, "sqft_lot": None}
+
+    gaps = test_client.post("/predict", json=body).json()
+    complete = test_client.post("/predict", json=sample_home_features).json()
+
+    assert set(gaps["imputed_fields"]) == {"bathrooms", "sqft_lot"}
+    assert all(math.isfinite(v) for v in gaps["imputed_fields"].values())
+    assert complete["imputed_fields"] == {}
