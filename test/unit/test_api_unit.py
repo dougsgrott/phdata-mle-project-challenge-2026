@@ -1,8 +1,13 @@
+import itertools
 import json
 import logging
+import math
 import pickle
+from pathlib import Path
 
 from fastapi.testclient import TestClient
+
+from src.api.endpoints import HOUSE_FIELDS
 
 
 def test_health_endpoint(test_client):
@@ -29,14 +34,16 @@ def test_artifacts_load_once(monkeypatch, sample_home_features):
 
     calls = []
     real_load = pickle.load
-    monkeypatch.setattr(pickle, "load", lambda f: calls.append(1) or real_load(f))
+    monkeypatch.setattr(
+        pickle, "load", lambda f: calls.append(Path(f.name).name) or real_load(f)
+    )
 
     with TestClient(app) as client:
         for _ in range(5):
             response = client.post("/predict", json=sample_home_features)
             assert response.status_code == 200
 
-    assert len(calls) == 1
+    assert sorted(calls) == ["imputer.pkl", "model.pkl"]
 
 
 def test_batch_reports_bad_rows(test_client, sample_home_features):
@@ -84,3 +91,71 @@ def test_request_is_logged_as_json(test_client, sample_home_features, caplog):
     assert entry["status"] == 200
     assert entry["zipcode"] == sample_home_features["zipcode"]
     assert entry["latency_ms"] >= 0
+
+
+def test_house_fields_match_model_features():
+    """The schema's house fields are the model's first features, in the same order."""
+    from src.api.endpoints import HOUSE_FIELDS
+
+    features = json.loads(Path("model/model_features.json").read_text())
+    assert features[: len(HOUSE_FIELDS)] == HOUSE_FIELDS
+
+
+def test_every_null_combination_gets_a_price(test_client, sample_home_features):
+    """All 128 null/present combinations of the house fields get a finite price."""
+    for nulls in itertools.product([False, True], repeat=len(HOUSE_FIELDS)):
+        gaps = {
+            field: None for field, null in zip(HOUSE_FIELDS, nulls, strict=True) if null
+        }
+        body = {**sample_home_features, **gaps}
+
+        response = test_client.post("/predict", json=body)
+
+        assert response.status_code == 200, body
+        price = response.json()["predicted_price"]
+        assert math.isfinite(price) and price > 0, body
+
+
+def test_omitted_field_is_treated_as_null(test_client, sample_home_features):
+    """Leaving a field out gives the same price as sending it as null."""
+    as_null = {**sample_home_features, "bathrooms": None}
+    omitted = {k: v for k, v in sample_home_features.items() if k != "bathrooms"}
+
+    null_price = test_client.post("/predict", json=as_null).json()["predicted_price"]
+    omitted_price = test_client.post("/predict", json=omitted).json()["predicted_price"]
+
+    assert omitted_price == null_price
+
+
+def test_null_zipcode_rejected(test_client, sample_home_features):
+    """zipcode stays required: null is a client error."""
+    response = test_client.post(
+        "/predict", json={**sample_home_features, "zipcode": None}
+    )
+
+    assert response.status_code == 422
+
+
+def test_batch_price_does_not_depend_on_batchmates(test_client, sample_home_features):
+    """A house with gaps gets the same result alone and in two different batches."""
+    house = {**sample_home_features, "bathrooms": None, "sqft_lot": None}
+    other = {**sample_home_features, "zipcode": "98125", "sqft_living": None}
+
+    alone = test_client.post("/predict", json=house).json()
+    first = test_client.post("/predict/batch", json=[house, sample_home_features])
+    second = test_client.post("/predict/batch", json=[other, house, other])
+
+    assert first.json()[0] == alone
+    assert second.json()[1] == alone
+
+
+def test_imputed_fields_lists_only_filled_fields(test_client, sample_home_features):
+    """Filled fields come back with their values; complete rows get an empty dict."""
+    body = {**sample_home_features, "bathrooms": None, "sqft_lot": None}
+
+    gaps = test_client.post("/predict", json=body).json()
+    complete = test_client.post("/predict", json=sample_home_features).json()
+
+    assert set(gaps["imputed_fields"]) == {"bathrooms", "sqft_lot"}
+    assert all(math.isfinite(v) for v in gaps["imputed_fields"].values())
+    assert complete["imputed_fields"] == {}

@@ -17,9 +17,12 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.model, app.state.model_features, app.state.demographics_by_zip = (
-        load_artifacts()
-    )
+    (
+        app.state.model,
+        app.state.model_features,
+        app.state.demographics_by_zip,
+        app.state.imputer,
+    ) = load_artifacts()
     yield
 
 

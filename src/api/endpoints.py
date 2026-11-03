@@ -11,14 +11,19 @@ router = APIRouter()
 
 
 class HomeFeatures(BaseModel):
-    bedrooms: int
-    bathrooms: float
-    sqft_living: float
-    sqft_lot: float
-    floors: float
-    sqft_above: float
-    sqft_basement: float
+    # Any house field may be null or left out; the imputer fills it. zipcode can't.
+    bedrooms: int | None = None
+    bathrooms: float | None = None
+    sqft_living: float | None = None
+    sqft_lot: float | None = None
+    floors: float | None = None
+    sqft_above: float | None = None
+    sqft_basement: float | None = None
     zipcode: str
+
+
+# The house fields, in the model's order (a unit test checks model_features.json)
+HOUSE_FIELDS = [name for name in HomeFeatures.model_fields if name != "zipcode"]
 
 
 def load_artifacts():
@@ -27,9 +32,11 @@ def load_artifacts():
         model = pickle.load(model_file)
     with open("model/model_features.json") as features_file:
         model_features = json.load(features_file)
+    with open("model/imputer.pkl", "rb") as imputer_file:
+        imputer = pickle.load(imputer_file)
     demographics = pd.read_csv("data/zipcode_demographics.csv", dtype={"zipcode": str})
     demographics_by_zip = demographics.set_index("zipcode").to_dict(orient="index")
-    return model, model_features, demographics_by_zip
+    return model, model_features, demographics_by_zip, imputer
 
 
 @router.get("/health")
@@ -67,14 +74,38 @@ async def predict(home_features: HomeFeatures, request: Request):
 
     # One row: house fields + the zipcode's demographics, in the model's order
     prediction = predict_rows(state, [home_features])[0]
-    return {"predicted_price": prediction}
+    return prediction
 
 
-def predict_rows(state, rows: list[HomeFeatures]) -> list[float]:
-    """Price validated rows with one model call. Their zipcodes must be known."""
+def predict_rows(state, rows: list[HomeFeatures]) -> list[dict]:
+    """Price validated rows with one model call. Their zipcodes must be known.
+
+    Join the demographics, fill missing house fields with the imputer, then
+    predict with the columns in the model's order. Complete rows skip the imputer.
+    Each result is {"predicted_price": float, "imputed_fields": {field: value}}.
+    """
     data = [{**row.dict(), **state.demographics_by_zip[row.zipcode]} for row in rows]
-    input_data = pd.DataFrame(data, columns=state.model_features)
-    return [float(price) for price in state.model.predict(input_data)]
+    frame = pd.DataFrame(data)
+
+    missing = frame[HOUSE_FIELDS].isna()
+    gaps = missing.any(axis=1)
+    if gaps.any():
+        house = frame[HOUSE_FIELDS].astype(float)
+        house.loc[gaps] = state.imputer.transform(house.loc[gaps])
+        frame[HOUSE_FIELDS] = house
+
+    prices = state.model.predict(frame[state.model_features])
+    return [
+        {
+            "predicted_price": float(price),
+            "imputed_fields": {
+                field: float(frame.at[i, field])
+                for field in HOUSE_FIELDS
+                if missing.at[i, field]
+            },
+        }
+        for i, price in enumerate(prices)
+    ]
 
 
 def describe(exc: ValidationError) -> str:
@@ -106,7 +137,7 @@ async def predict_batch(request: Request, rows: Annotated[list[Any], Body()]):
         positions.append(i)
 
     if valid:
-        for i, price in zip(positions, predict_rows(state, valid), strict=True):
-            results[i] = {"predicted_price": price}
+        for i, result in zip(positions, predict_rows(state, valid), strict=True):
+            results[i] = result
 
     return results

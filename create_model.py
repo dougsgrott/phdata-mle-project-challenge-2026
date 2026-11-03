@@ -7,9 +7,8 @@ from sklearn import model_selection, neighbors, pipeline, preprocessing
 
 SALES_PATH = "data/kc_house_data.csv"  # path to CSV with home sale data
 DEMOGRAPHICS_PATH = "data/zipcode_demographics.csv"  # path to CSV with demographics
-# List of columns (subset) that will be taken from home sale data
-SALES_COLUMN_SELECTION = [
-    "price",
+# House fields the model is trained on, in order; the API takes the same ones
+HOUSE_FIELDS = [
     "bedrooms",
     "bathrooms",
     "sqft_living",
@@ -17,8 +16,9 @@ SALES_COLUMN_SELECTION = [
     "floors",
     "sqft_above",
     "sqft_basement",
-    "zipcode",
 ]
+# List of columns (subset) that will be taken from home sale data
+SALES_COLUMN_SELECTION = ["price", *HOUSE_FIELDS, "zipcode"]
 OUTPUT_DIR = "model"  # Directory where output artifacts will be saved
 
 
