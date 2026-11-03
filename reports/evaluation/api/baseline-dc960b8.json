@@ -1,0 +1,13 @@
+{
+  "label": "baseline",
+  "timestamp": "2026-11-02T00:15:21+00:00",
+  "url": "http://localhost:8000",
+  "rows": 5404,
+  "failed": 0,
+  "errors": {},
+  "coverage": 1.0,
+  "mae": 102068.10292376019,
+  "mape_pct": 17.906686377733422,
+  "within_10pct": 0.42487046632124353,
+  "wall_seconds": 144.88216358600766
+}

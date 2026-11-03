@@ -1,0 +1,106 @@
+{
+  "label": "p2-rerun2",
+  "timestamp": "2026-11-02T16:24:46+00:00",
+  "image": "housing-api:p2",
+  "image_size_bytes": 155297060,
+  "image_size_mb": 155.3,
+  "limits": {
+    "cpus": "1",
+    "memory": "2g"
+  },
+  "cold_start": {
+    "runs": [
+      {
+        "health_seconds": 4.349417802004609,
+        "first_request_ms": 28.39424498961307
+      },
+      {
+        "health_seconds": 4.3045576279982924,
+        "first_request_ms": 17.122406017733738
+      },
+      {
+        "health_seconds": 3.6423905569827184,
+        "first_request_ms": 26.01780599798076
+      }
+    ],
+    "median_health_seconds": 4.3045576279982924,
+    "median_first_request_ms": 26.01780599798076
+  },
+  "load": {
+    "c1": {
+      "label": "p2-rerun2-c1",
+      "timestamp": "2026-11-02T16:24:44+00:00",
+      "url": "http://localhost:8000",
+      "input": "/home/user/projects/phdata-mle-project-challenge-2026/src/data/future_unseen_examples.csv",
+      "concurrency": 1,
+      "requests": 100,
+      "succeeded": 100,
+      "failed": 0,
+      "errors": {},
+      "wall_seconds": 0.7196754049800802,
+      "throughput_rps": 138.9515319100948,
+      "latency_ms": {
+        "min": 4.375905991764739,
+        "mean": 7.1476317988708615,
+        "p50": 6.853608007077128,
+        "p90": 8.755670700338671,
+        "p95": 9.525425470201299,
+        "p99": 10.918927027669339,
+        "max": 24.344619014300406
+      },
+      "latency_ms_excl_first": {
+        "min": 4.375905991764739,
+        "mean": 6.973924857300866,
+        "p50": 6.846737000159919,
+        "p90": 8.737976191332564,
+        "p95": 9.185432916274292,
+        "p99": 10.09441319678444,
+        "max": 10.783313977299258
+      },
+      "first_request_ms": 24.344619014300406
+    },
+    "c10": {
+      "label": "p2-rerun2-c10",
+      "timestamp": "2026-11-02T16:24:45+00:00",
+      "url": "http://localhost:8000",
+      "input": "/home/user/projects/phdata-mle-project-challenge-2026/src/data/future_unseen_examples.csv",
+      "concurrency": 10,
+      "requests": 100,
+      "succeeded": 100,
+      "failed": 0,
+      "errors": {},
+      "wall_seconds": 0.5466229009907693,
+      "throughput_rps": 182.9414754097335,
+      "latency_ms": {
+        "min": 26.467783987754956,
+        "mean": 50.282325128791854,
+        "p50": 44.60597049910575,
+        "p90": 74.96810519660359,
+        "p95": 78.06206798268249,
+        "p99": 83.07517957960955,
+        "max": 85.13592300005257
+      },
+      "latency_ms_excl_first": {
+        "min": 26.467783987754956,
+        "mean": 50.379740281531475,
+        "p50": 44.60719900089316,
+        "p90": 75.06683739484288,
+        "p95": 78.0869869835442,
+        "p99": 83.09599516971501,
+        "max": 85.13592300005257
+      },
+      "first_request_ms": 40.63822500756942
+    }
+  },
+  "docker_stats": {
+    "BlockIO": "0B / 29.1MB",
+    "CPUPerc": "0.31%",
+    "Container": "housing-api-benchmark",
+    "ID": "cb1df300f20c",
+    "MemPerc": "5.56%",
+    "MemUsage": "113.9MiB / 2GiB",
+    "Name": "housing-api-benchmark",
+    "NetIO": "116kB / 79.5kB",
+    "PIDs": "1"
+  }
+}

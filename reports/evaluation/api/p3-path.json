@@ -1,0 +1,13 @@
+{
+  "label": "p3-path",
+  "timestamp": "2026-11-02T23:22:10+00:00",
+  "url": "http://localhost:8000",
+  "rows": 5404,
+  "failed": 0,
+  "errors": {},
+  "coverage": 1.0,
+  "mae": 102057.1129903775,
+  "mape_pct": 17.90535400538485,
+  "within_10pct": 0.4250555144337528,
+  "wall_seconds": 22.95782146800775
+}

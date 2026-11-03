@@ -1,0 +1,10 @@
+{
+  "label": "baseline",
+  "timestamp": "2026-11-02T01:26:41+00:00",
+  "model": "/home/user/projects/phdata-mle-project-challenge-2026/src/model/model.pkl",
+  "rows": 5404,
+  "coverage": 1.0,
+  "mae": 102068.10292376019,
+  "mape_pct": 17.906686377733422,
+  "within_10pct": 0.42487046632124353
+}
