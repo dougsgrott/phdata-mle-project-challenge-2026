@@ -14,3 +14,8 @@ variable "alert_email" {
   description = "Where alarm and budget emails go"
   type        = string
 }
+
+variable "github_repository" {
+  description = "GitHub repository allowed to deploy, as owner/name"
+  type        = string
+}

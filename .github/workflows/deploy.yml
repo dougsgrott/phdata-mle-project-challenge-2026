@@ -1,0 +1,86 @@
+name: Deploy
+
+# Manual only: Actions tab > Deploy > Run workflow, or gh workflow run deploy.yml
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write # lets the job request the token that AWS trusts
+  contents: read
+
+# Two deploys can never run at the same time
+concurrency: deploy
+
+env:
+  AWS_REGION: us-west-2
+  ECR_REPOSITORY: sound-realty-api
+  FUNCTION_NAME: sound-realty-api
+  API_KEY_PARAMETER: /sound-realty/api-key
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sign in to AWS (short-lived credentials, no stored keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sign in to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push the image, tagged with the commit
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          IMAGE="${{ steps.ecr.outputs.registry }}/$ECR_REPOSITORY:$SHA"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+          # Tags are immutable: if this commit was already pushed, reuse that image
+          if aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids imageTag="$SHA" > /dev/null 2>&1; then
+            echo "Image $SHA already in ECR, skipping the build"
+          else
+            # Single-image manifest: Lambda rejects the multi-manifest index Docker builds by default
+            docker build --platform linux/amd64 --provenance=false --sbom=false -t "$IMAGE" .
+            docker push "$IMAGE"
+          fi
+
+      - name: Point the Lambda at the new image
+        run: |
+          aws lambda update-function-code --function-name "$FUNCTION_NAME" \
+            --image-uri "$IMAGE" --query LastUpdateStatus --output text
+          aws lambda wait function-updated-v2 --function-name "$FUNCTION_NAME"
+
+      - name: Smoke tests against the live API
+        env:
+          URL: ${{ vars.API_URL }}
+        run: |
+          KEY=$(aws ssm get-parameter --name "$API_KEY_PARAMETER" --with-decryption \
+            --query Parameter.Value --output text)
+          echo "::add-mask::$KEY"
+          BODY='{"bedrooms":3,"bathrooms":null,"sqft_living":2000,"sqft_lot":null,"floors":2,"sqft_above":1500,"sqft_basement":500,"zipcode":"98125"}'
+
+          # 1. Health. The first request after a deploy is a slow cold start, so retry.
+          for attempt in $(seq 1 12); do
+            if curl -sf --max-time 35 "$URL/health"; then break; fi
+            echo "Attempt $attempt: not ready yet"
+            sleep 5
+          done
+          curl -sf --max-time 35 "$URL/health"
+
+          # 2. Prediction with the key: 200, and both missing fields were filled
+          curl -sf --max-time 35 -H "x-api-key: $KEY" -H "content-type: application/json" \
+            -d "$BODY" -o predict.json "$URL/predict"
+          jq -e '.imputed_fields | has("bathrooms") and has("sqft_lot")' predict.json
+
+          # 3. The same request without the key: rejected by the gateway
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "content-type: application/json" \
+            -d "$BODY" "$URL/predict")
+          echo "Without key: $CODE"
+          test "$CODE" = "403"
+
+      - name: Record what was deployed
+        run: echo "Deployed \`$IMAGE\`" >> "$GITHUB_STEP_SUMMARY"

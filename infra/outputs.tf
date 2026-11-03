@@ -12,3 +12,8 @@ output "api_key_parameter" {
   description = "SSM parameter holding the API key"
   value       = aws_ssm_parameter.api_key.name
 }
+
+output "deploy_role_arn" {
+  description = "Role deploy.yml assumes; set as the AWS_DEPLOY_ROLE_ARN repository variable"
+  value       = aws_iam_role.deploy.arn
+}
