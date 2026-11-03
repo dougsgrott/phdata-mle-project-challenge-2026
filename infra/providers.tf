@@ -6,10 +6,6 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.35" # 6.35 adds aws_sagemaker_mlflow_app (P6)
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.6"
-    }
   }
 
   # The bucket is created once by hand (roadmap step 3).
@@ -31,7 +27,6 @@ provider "aws" {
     tags = {
       project    = var.project
       managed_by = "terraform"
-      expires_on = var.expires_on
     }
   }
 }
